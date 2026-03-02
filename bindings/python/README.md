@@ -18,3 +18,12 @@ python3 -c "from zxcvbn_rs import zxcvbn; print(zxcvbn('correcthorsebatterystapl
 cd bindings/python
 maturin build --release
 ```
+
+## Run Python tests
+
+After installing the built wheel (or running `maturin develop`):
+
+```bash
+cd bindings/python
+python3 -m unittest discover -s tests -p "test_*.py"
+```
