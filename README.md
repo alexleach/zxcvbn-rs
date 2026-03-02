@@ -31,6 +31,11 @@ zxcvbn targets the latest stable Rust compiler.
 It may compile on earlier versions of the compiler, but is only guaranteed to work on the latest stable.
 It should also work on the latest beta and nightly, assuming there are no compiler bugs.
 
+## Python bindings (optional)
+
+This repository includes optional Python bindings under `bindings/python`.
+They are built as a separate package with `maturin` and do not affect Rust-only users of this crate.
+
 ## Usage
 
 Full API documentation can be found [here](https://docs.rs/zxcvbn/*/zxcvbn/).
