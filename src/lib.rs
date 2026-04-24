@@ -332,7 +332,7 @@ mod tests {
     fn test_overflow_safety() {
         let password = "!QASW@#EDFR$%TGHY^&UJKI*(OL";
         let entropy = zxcvbn(password, &[]);
-        assert_eq!(entropy.guesses, u64::max_value());
+        assert_eq!(entropy.guesses, u64::MAX);
         assert_eq!(entropy.score, Score::Four);
     }
 

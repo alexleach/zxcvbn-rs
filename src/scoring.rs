@@ -561,7 +561,7 @@ mod tests {
 
     quickcheck! {
         fn test_n_ck_mul_overflow(n: usize, k: usize) -> TestResult {
-            if n >= 63 && n <= 100 {
+            if (63..=100).contains(&n) {
                 scoring::n_ck(n, k); // Must not panic
                 TestResult::from_bool(true)
             } else {
@@ -607,7 +607,8 @@ mod tests {
             ..Match::default()
         };
 
-        let result = scoring::most_guessable_match_sequence(password, &[m.clone()], true);
+        let result =
+            scoring::most_guessable_match_sequence(password, std::slice::from_ref(&m), true);
         assert_eq!(result.sequence.len(), 2);
         assert_eq!(result.sequence[0], m);
         let m1 = &result.sequence[1];
@@ -627,7 +628,8 @@ mod tests {
             ..Match::default()
         };
 
-        let result = scoring::most_guessable_match_sequence(password, &[m.clone()], true);
+        let result =
+            scoring::most_guessable_match_sequence(password, std::slice::from_ref(&m), true);
         assert_eq!(result.sequence.len(), 2);
         let m0 = &result.sequence[0];
         assert_eq!(m0.pattern.variant(), "bruteforce");
@@ -647,7 +649,8 @@ mod tests {
             ..Match::default()
         };
 
-        let result = scoring::most_guessable_match_sequence(password, &[m.clone()], true);
+        let result =
+            scoring::most_guessable_match_sequence(password, std::slice::from_ref(&m), true);
         assert_eq!(result.sequence.len(), 3);
         assert_eq!(result.sequence[1], m);
         let m0 = &result.sequence[0];
@@ -886,7 +889,7 @@ mod tests {
         let token = "1123";
         assert_eq!(
             p.estimate(token),
-            365 * (*scoring::REFERENCE_YEAR - p.year).abs() as u64
+            365 * (*scoring::REFERENCE_YEAR - p.year).unsigned_abs() as u64
         );
     }
 
@@ -914,7 +917,7 @@ mod tests {
         let base_guesses = *scoring::KEYBOARD_STARTING_POSITIONS
             * *scoring::KEYBOARD_AVERAGE_DEGREE
             * (token.len() - 1) as u64;
-        assert_eq!(p.estimate(token), base_guesses as u64);
+        assert_eq!(p.estimate(token), base_guesses);
     }
 
     #[test]
@@ -946,7 +949,7 @@ mod tests {
             * *scoring::KEYBOARD_AVERAGE_DEGREE
             * (token.len() - 1) as u64
             * 2;
-        assert_eq!(p.estimate(token), base_guesses as u64);
+        assert_eq!(p.estimate(token), base_guesses);
     }
 
     #[test]
@@ -965,7 +968,6 @@ mod tests {
                         scoring::n_ck(i - 1, j - 1)
                             * (*scoring::KEYBOARD_STARTING_POSITIONS
                                 * scoring::KEYBOARD_AVERAGE_DEGREE.pow(j as u32))
-                                as u64
                     })
                     .sum::<u64>()
             })

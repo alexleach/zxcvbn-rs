@@ -990,7 +990,7 @@ mod tests {
             } else {
                 panic!("Wrong match pattern")
             };
-            assert_eq!(p.reversed, true);
+            assert!(p.reversed);
         }
     }
 
@@ -1063,7 +1063,7 @@ mod tests {
             } else {
                 panic!("Wrong match pattern")
             };
-            assert_eq!(p.l33t, true);
+            assert!(p.l33t);
         }
     }
 
@@ -1082,7 +1082,7 @@ mod tests {
             } else {
                 panic!("Wrong match pattern")
             };
-            assert_eq!(p.l33t, true);
+            assert!(p.l33t);
         }
     }
 
@@ -1208,7 +1208,7 @@ mod tests {
             panic!("Wrong match pattern")
         };
         assert_eq!(p.sequence_name, "lower");
-        assert_eq!(p.ascending, false);
+        assert!(!p.ascending);
     }
 
     #[test]
