@@ -77,10 +77,6 @@ fn normalize_sequence(result: &Bound<'_, PyAny>) -> PyResult<()> {
                 item.del_item(key)?;
             }
         }
-        if let Some(guesses) = item.get_item("guesses")? {
-            let guesses = guesses.extract::<u64>()?;
-            item.set_item("guesses_log10", (guesses as f64).log10())?;
-        }
     }
     Ok(())
 }
@@ -92,6 +88,7 @@ fn zxcvbn_py(
     user_inputs: Option<Vec<String>>,
     max_length: Option<usize>,
 ) -> PyResult<Py<PyAny>> {
+    let password = password.to_owned();
     if let Some(limit) = max_length {
         if password.chars().count() > limit {
             return Err(PyValueError::new_err(format!(
@@ -102,7 +99,7 @@ fn zxcvbn_py(
 
     let inputs = user_inputs.unwrap_or_default();
     let input_refs = inputs.iter().map(String::as_str).collect::<Vec<_>>();
-    let entropy = py.allow_threads(|| zxcvbn_core(password, &input_refs));
+    let entropy = py.allow_threads(|| zxcvbn_core(&password, &input_refs));
     let crack_times = entropy.crack_times();
     let t_online_throttling = crack_times.online_throttling_100_per_hour();
     let t_online_no_throttling = crack_times.online_no_throttling_10_per_second();
@@ -129,7 +126,7 @@ fn zxcvbn_py(
     };
 
     let response = ZxcvbnResultOut {
-        password: password.to_owned(),
+        password,
         guesses: entropy.guesses(),
         guesses_log10: if entropy.guesses_log10().is_finite() {
             entropy.guesses_log10()

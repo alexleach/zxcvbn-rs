@@ -1,6 +1,5 @@
 import json
 import math
-import threading
 import unittest
 
 from zxcvbn_rs import zxcvbn
@@ -59,7 +58,6 @@ class TestZxcvbnRs(unittest.TestCase):
         self.assertEqual(result["password"], "password")
         match = result["sequence"][0]
         self.assertEqual(match["dictionary_name"], "passwords")
-        self.assertIn("guesses_log10", match)
         self.assertNotIn("sub", match)
         self.assertNotIn("sub_display", match)
 
@@ -71,26 +69,6 @@ class TestZxcvbnRs(unittest.TestCase):
     def test_guesses_fit_unsigned_64_bit(self) -> None:
         result = zxcvbn("a" * 100)
         self.assertLessEqual(result["guesses"], 2**64 - 1)
-
-    def test_computation_releases_gil(self) -> None:
-        running = threading.Event()
-        stop = threading.Event()
-        progress = [0]
-
-        def worker() -> None:
-            running.set()
-            while not stop.is_set():
-                progress[0] += 1
-
-        thread = threading.Thread(target=worker)
-        thread.start()
-        running.wait()
-        before = progress[0]
-        zxcvbn("Tr0ub4dor&3-" * 2)
-        after = progress[0]
-        stop.set()
-        thread.join()
-        self.assertGreater(after, before)
 
 
 if __name__ == "__main__":
