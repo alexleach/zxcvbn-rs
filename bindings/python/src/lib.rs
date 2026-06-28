@@ -1,8 +1,10 @@
-use pyo3::prelude::*;
-use pythonize::pythonize;
-use serde::Serialize;
 use ::zxcvbn::time_estimates::CrackTimeSeconds;
 use ::zxcvbn::{zxcvbn as zxcvbn_core, Match, feedback::Warning};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::{PyDict, PyList};
+use pythonize::pythonize;
+use serde::Serialize;
 
 #[derive(Serialize)]
 struct CrackTimesSecondsOut {
@@ -22,12 +24,13 @@ struct CrackTimesDisplayOut {
 
 #[derive(Serialize)]
 struct FeedbackOut {
-    warning: Option<String>,
+    warning: String,
     suggestions: Vec<String>,
 }
 
 #[derive(Serialize)]
 struct ZxcvbnResultOut {
+    password: String,
     guesses: u64,
     guesses_log10: f64,
     score: u8,
@@ -45,15 +48,61 @@ fn crack_time_to_f64(value: CrackTimeSeconds) -> f64 {
     }
 }
 
-#[pyfunction(name = "zxcvbn", signature = (password, user_inputs=None))]
+fn dictionary_name(name: &str) -> &str {
+    match name {
+        "Passwords" => "passwords",
+        "English" => "english_wikipedia",
+        "FemaleNames" => "female_names",
+        "MaleNames" => "male_names",
+        "Surnames" => "surnames",
+        "UsTvAndFilm" => "us_tv_and_film",
+        "UserInputs" => "user_inputs",
+        _ => name,
+    }
+}
+
+fn normalize_sequence(result: &Bound<'_, PyAny>) -> PyResult<()> {
+    let result = result.downcast::<PyDict>()?;
+    let sequence = result
+        .get_item("sequence")?
+        .ok_or_else(|| PyValueError::new_err("serialized result has no sequence"))?;
+    for item in sequence.downcast::<PyList>()? {
+        let item = item.downcast::<PyDict>()?;
+        if let Some(name) = item.get_item("dictionary_name")? {
+            let name = name.extract::<String>()?;
+            item.set_item("dictionary_name", dictionary_name(&name))?;
+        }
+        for key in ["sub", "sub_display"] {
+            if item.get_item(key)?.map_or(false, |value| value.is_none()) {
+                item.del_item(key)?;
+            }
+        }
+        if let Some(guesses) = item.get_item("guesses")? {
+            let guesses = guesses.extract::<u64>()?;
+            item.set_item("guesses_log10", (guesses as f64).log10())?;
+        }
+    }
+    Ok(())
+}
+
+#[pyfunction(name = "zxcvbn", signature = (password, user_inputs=None, max_length=None))]
 fn zxcvbn_py(
     py: Python<'_>,
     password: &str,
     user_inputs: Option<Vec<String>>,
+    max_length: Option<usize>,
 ) -> PyResult<Py<PyAny>> {
+    if let Some(limit) = max_length {
+        if password.chars().count() > limit {
+            return Err(PyValueError::new_err(format!(
+                "Password exceeds max length of {limit} characters."
+            )));
+        }
+    }
+
     let inputs = user_inputs.unwrap_or_default();
     let input_refs = inputs.iter().map(String::as_str).collect::<Vec<_>>();
-    let entropy = zxcvbn_core(password, &input_refs);
+    let entropy = py.allow_threads(|| zxcvbn_core(password, &input_refs));
     let crack_times = entropy.crack_times();
     let t_online_throttling = crack_times.online_throttling_100_per_hour();
     let t_online_no_throttling = crack_times.online_no_throttling_10_per_second();
@@ -62,7 +111,10 @@ fn zxcvbn_py(
 
     let feedback = if let Some(feedback) = entropy.feedback() {
         FeedbackOut {
-            warning: feedback.warning().map(|value: Warning| value.to_string()),
+            warning: feedback
+                .warning()
+                .map(|value: Warning| value.to_string())
+                .unwrap_or_default(),
             suggestions: feedback
                 .suggestions()
                 .iter()
@@ -71,14 +123,19 @@ fn zxcvbn_py(
         }
     } else {
         FeedbackOut {
-            warning: None,
+            warning: String::new(),
             suggestions: Vec::new(),
         }
     };
 
     let response = ZxcvbnResultOut {
+        password: password.to_owned(),
         guesses: entropy.guesses(),
-        guesses_log10: entropy.guesses_log10(),
+        guesses_log10: if entropy.guesses_log10().is_finite() {
+            entropy.guesses_log10()
+        } else {
+            0.0
+        },
         score: u8::from(entropy.score()),
         feedback,
         sequence: entropy.sequence().to_vec(),
@@ -98,6 +155,7 @@ fn zxcvbn_py(
     };
 
     let py_obj = pythonize(py, &response)?;
+    normalize_sequence(py_obj.bind(py))?;
 
     Ok(py_obj)
 }

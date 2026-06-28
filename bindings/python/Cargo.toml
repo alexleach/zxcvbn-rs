@@ -1,6 +1,6 @@
 [package]
 name = "zxcvbn-rs"
-version = "0.1.0"
+version = "3.1.1"
 edition = "2021"
 description = "Python bindings for zxcvbn-rs"
 license = "MIT"
