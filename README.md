@@ -35,6 +35,7 @@ It should also work on the latest beta and nightly, assuming there are no compil
 
 This repository includes optional Python bindings under `bindings/python`.
 They are built as a separate package with `maturin` and do not affect Rust-only users of this crate.
+See the [Python binding documentation](bindings/python/README.md) for usage and compatibility details.
 
 ## Usage
 
